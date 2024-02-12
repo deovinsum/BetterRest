@@ -10,9 +10,8 @@ struct ContentView: View {
     @State private var coffeeAmount = 1
     @State private var coffeeCupArray = Array(1...20)
     
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    @State private var showingAlert = false
+    @State private var bedTime = ""
+    @State private var message = ""
     
     static var defaultWakeTime: Date {
         var components = DateComponents()
@@ -25,19 +24,22 @@ struct ContentView: View {
         
         NavigationStack {
             Form {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("When do you want wake up?")
-                        .font(.headline)
+                Section("When do you want wake up?") {
                     
                     DatePicker("Please enter a time", selection: $wakeUp, displayedComponents: .hourAndMinute)
                         .labelsHidden()
+                        .frame(minWidth: /*@START_MENU_TOKEN@*/0/*@END_MENU_TOKEN@*/, maxWidth: .infinity, alignment: .center)
+                        .onChange(of: wakeUp) {
+                            calculateBedTime()
+                        }
                 }
                 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Desired amount of sleep")
-                        .font(.headline)
+                Section("Desired amount of sleep") {
                     
                     Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
+                        .onChange(of: sleepAmount) {
+                            calculateBedTime()
+                        }
                 }
             
                 Section("Dayily coffee intake") {
@@ -47,27 +49,32 @@ struct ContentView: View {
                             Text($0, format: .number)
                         }
                     }
-                    
-//                    Stepper(coffeeAmount == 1 ? "1 cup" : "\(coffeeAmount) cups", value:
-//                    $coffeeAmount, in: 1...20)
-//                    Stepper("^[\(coffeeAmount) cup](inflect: true)", value: $coffeeAmount, in: 1...20)
+                    .onChange(of: coffeeAmount) {
+                        calculateBedTime()
+                    }
+                }
+                
+                Section("Your ideal bedtime is...") {
+                    Text(message)
+                        .frame(minWidth: /*@START_MENU_TOKEN@*/0/*@END_MENU_TOKEN@*/, maxWidth: .infinity, alignment: .center)
+                        .foregroundStyle(.blue)
+                        .font(.headline)
                 }
             }
             
+            .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("BetterRest")
-            .toolbar {
-                Button("Calculate", action: calculateBedTime)
+            .onAppear {
+                self.calculateBedTime()
             }
-            .alert(alertTitle, isPresented: $showingAlert) {
-                Button("OK") { }
-            } message: {
-                Text(alertMessage)
-            }
+
         }
     }
     
     func calculateBedTime() {
+        
         do {
+            
             let config = MLModelConfiguration()
             let model = try SleepCalculator(configuration: config)
             
@@ -80,19 +87,17 @@ struct ContentView: View {
             
             let sleepTime = wakeUp - prediction.actualSleep
             
-            alertTitle = "Your ideal bedtime is..."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened)
+            bedTime = sleepTime.formatted(date: .omitted, time: .shortened)
+            message = "Your ideal bedtime is \(bedTime)"
+            
         } catch {
-            alertTitle = "Error"
-            alertMessage = "Sorry, there was a problem calculating you bedtime."
+            
+            message = "Sorry, there was a problem calculating you bedtime."
+
         }
-        
-        showingAlert = true
-        
     }
 }
 
 #Preview {
     ContentView()
 }
-
